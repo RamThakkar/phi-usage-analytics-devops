@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phibonacci - Usage Analytics</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="shortcut icon" href="/favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#4F46E5',
+                        brandLight: '#EEF2FF',
+                        surface: '#FFFFFF',
+                        pageBg: '#F9FAFB',
+                        sidebar: '#FFFFFF',
+                        textPrimary: '#111827',
+                        textSecondary: '#6B7280',
+                        textMuted: '#9CA3AF',
+                        borderLight: '#F3F4F6',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                        purple: '#7C3AED',
+                        orange: '#F97316',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        'xl': '12px',
+                        '2xl': '16px',
+                        '3xl': '20px',
+                    },
+                    boxShadow: {
+                        'card': '0 1px 3px rgba(0,0,0,0.04)',
+                        'cardHover': '0 4px 12px rgba(0,0,0,0.06)',
+                        'sidebar': '1px 0 0 #F3F4F6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #F9FAFB; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 100px; }
+        
+        /* Sidebar */
+        .sidebar-link { 
+            display: flex; align-items: center; gap: 10px; 
+            padding: 8px 14px; border-radius: 8px; 
+            font-size: 13px; font-weight: 500; color: #6B7280;
+            transition: all 0.15s ease; cursor: pointer;
+        }
+        .sidebar-link:hover { background: #F9FAFB; color: #111827; }
+        .sidebar-link.active { background: #F3F4F6; color: #111827; font-weight: 600; }
+        
+        /* Cards */
+        .stat-card { transition: all 0.2s ease; }
+        .stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Spinner */
+        .spinner { border: 3px solid #F3F4F6; border-top: 3px solid #4F46E5; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.7s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Input focus */
+        .input-focus:focus { border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.08); outline: none; }
+        
+        /* Breadcrumb */
+        .breadcrumb-item:not(:last-child)::after { content: '/'; margin: 0 8px; color: #D1D5DB; font-weight: 400; }
+        .breadcrumb-item:last-child { color: #111827; font-weight: 600; }
+        
+        /* Table */
+        .table-row-hover:hover { background: #F9FAFB; }
+        
+        /* Badge */
+        .badge { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+        
+        /* Time period toggle */
+        .period-btn { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; color: #6B7280; cursor: pointer; transition: all 0.15s ease; }
+        .period-btn:hover { background: #F3F4F6; }
+        .period-btn.active { background: #111827; color: #FFFFFF; }
+
+        /* Responsive sidebar */
+        @media (max-width: 1280px) {
+            .sidebar-desktop { width: 180px; }
+            .main-content { margin-left: 180px !important; }
+        }
+        @media (max-width: 1024px) {
+            .sidebar-desktop { width: 220px; transform: translateX(-100%); }
+            .sidebar-desktop.open { transform: translateX(0); }
+            .main-content { margin-left: 0 !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- ===== LOGIN PAGE ===== -->
+    <div id="login-page" class="min-h-screen bg-[#f8f9fb] flex items-center justify-center p-4">
+        <!-- Centered Card -->
+        <div class="w-full max-w-[900px] bg-white rounded-2xl shadow-[0_4px_40px_rgba(0,0,0,0.06)] overflow-hidden flex min-h-[520px]">
+            
+            <!-- Left - Branding -->
+            <div class="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4338ca] p-8 flex-col justify-between relative overflow-hidden">
+                <!-- Decorative elements -->
+                <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                <div class="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/3"></div>
+                
+                <!-- Top -->
+                <div class="relative z-10">
+                    <div class="w-9 h-9 bg-white/15 rounded-lg flex items-center justify-center backdrop-blur-sm mb-6">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <h1 class="text-xl font-bold text-white mb-1">Phibonacci</h1>
+                    <p class="text-indigo-300 text-xs">Content Usage Intelligence</p>
+                </div>
+                
+                <!-- Middle - Stats preview -->
+                <div class="relative z-10 space-y-3">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3.5 border border-white/10">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] text-indigo-300 uppercase tracking-wider">Quick Insights</span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div><p class="text-lg font-bold text-white">131</p><p class="text-[9px] text-indigo-300">Licenses</p></div>
+                            <div><p class="text-lg font-bold text-white">510</p><p class="text-[9px] text-indigo-300">Sessions</p></div>
+                            <div><p class="text-lg font-bold text-white">50h</p><p class="text-[9px] text-indigo-300">Usage</p></div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="flex-1 bg-white/10 backdrop-blur-sm rounded-lg p-2.5 border border-white/10">
+                            <p class="text-[9px] text-indigo-300 mb-1">Video</p>
+                            <div class="h-1 bg-white/20 rounded-full"><div class="h-full w-[24%] bg-purple-400 rounded-full"></div></div>
+                        </div>
+                        <div class="flex-1 bg-white/10 backdrop-blur-sm rounded-lg p-2.5 border border-white/10">
+                            <p class="text-[9px] text-indigo-300 mb-1">Simulation</p>
+                            <div class="h-1 bg-white/20 rounded-full"><div class="h-full w-[76%] bg-orange-400 rounded-full"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom -->
+                <div class="relative z-10">
+                    <div class="flex items-center gap-2">
+                        <div class="flex -space-x-1.5">
+                            <div class="w-5 h-5 rounded-full bg-indigo-400 border-2 border-indigo-900"></div>
+                            <div class="w-5 h-5 rounded-full bg-purple-400 border-2 border-indigo-900"></div>
+                            <div class="w-5 h-5 rounded-full bg-blue-400 border-2 border-indigo-900"></div>
+                        </div>
+                        <p class="text-[10px] text-indigo-300">Trusted by education organizations</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right - Login Form -->
+            <div class="flex-1 flex items-center justify-center p-8 lg:p-10">
+                <div class="w-full max-w-[320px]">
+                    <!-- Mobile logo -->
+                    <div class="lg:hidden flex items-center gap-2 mb-8">
+                        <div class="w-8 h-8 bg-brand rounded-lg flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                        <span class="text-sm font-bold text-textPrimary">Phibonacci</span>
+                    </div>
+
+                    <h2 class="text-xl font-bold text-textPrimary mb-1">Welcome back</h2>
+                    <p class="text-textSecondary text-xs mb-6">Sign in to access your analytics dashboard</p>
+
+                    <form id="login-form" onsubmit="handleLogin(event)">
+                        <div class="mb-4">
+                            <label class="block text-xs font-medium text-textSecondary mb-1.5">Username</label>
+                            <input type="text" id="login-username" placeholder="Enter username" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm input-focus transition bg-gray-50/50 focus:bg-white" required>
+                        </div>
+                        <div class="mb-5">
+                            <label class="block text-xs font-medium text-textSecondary mb-1.5">Password</label>
+                            <input type="password" id="login-password" placeholder="Enter password" class="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm input-focus transition bg-gray-50/50 focus:bg-white" required>
+                        </div>
+                        <div id="login-error" class="hidden mb-4 p-2.5 bg-red-50 border border-red-100 rounded-lg">
+                            <p class="text-xs text-red-600" id="login-error-text"></p>
+                        </div>
+                        <button type="submit" id="login-btn" class="w-full bg-brand text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-[0.98] transition flex items-center justify-center gap-2 shadow-sm shadow-brand/20">
+                            <span id="login-btn-text">Sign In</span>
+                            <span id="login-spinner" class="hidden spinner"></span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                        </button>
+                    </form>
+
+                    <div class="mt-6 pt-5 border-t border-gray-100 text-center">
+                        <p class="text-[10px] text-textMuted">Don't have credentials? Contact your admin.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== DASHBOARD ===== -->
+    <div id="dashboard-page" class="hidden min-h-screen flex">
+        
+        <!-- Mobile sidebar overlay -->
+        <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/30 z-40 lg:hidden" onclick="toggleMobileSidebar()"></div>
+        
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar-desktop w-[220px] bg-white border-r border-borderLight fixed top-0 left-0 h-full z-50 flex flex-col transition-transform lg:translate-x-0 -translate-x-full lg:transform-none">
+            <!-- Logo -->
+            <div class="px-5 py-4 flex items-center gap-2.5">
+                <div class="w-7 h-7 bg-brand rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <span class="text-sm font-bold text-textPrimary">Phibonacci</span>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 px-3 py-1 space-y-0.5">
+                <a class="sidebar-link active" data-nav="dashboard" onclick="navigateSidebar('dashboard')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    Dashboard
+                </a>
+                <a class="sidebar-link" data-nav="insights" onclick="navigateSidebar('insights')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    Insights
+                </a>
+                <a class="sidebar-link" data-nav="licenses" onclick="navigateSidebar('licenses')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                    Licenses
+                </a>
+                <a class="sidebar-link" data-nav="heatmap" onclick="navigateSidebar('heatmap')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    Heatmap
+                </a>
+            </nav>
+
+            <!-- Bottom section -->
+            <div class="px-3 py-3 border-t border-borderLight">
+                <a class="sidebar-link" onclick="handleLogout()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    Logout
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content flex-1 lg:ml-[220px] min-h-screen">
+            <!-- Top Header -->
+            <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-borderLight">
+                <div class="px-4 lg:px-5 py-2.5 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <!-- Mobile menu button -->
+                        <button onclick="toggleMobileSidebar()" class="lg:hidden w-7 h-7 rounded-md flex items-center justify-center hover:bg-gray-100 transition">
+                            <svg class="w-4 h-4 text-textSecondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                        </button>
+                        <h1 class="text-sm font-semibold text-textPrimary" id="page-title">Dashboard</h1>
+                    </div>
+                    <!-- Right side: dynamic based on page -->
+                    <div class="flex items-center gap-2" id="header-right">
+                        <!-- Date Filter (shown on dashboard/licenses) -->
+                        <div id="header-date-filter" class="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                            <input type="date" id="filter-from" class="bg-transparent border-none text-xs text-textSecondary outline-none w-[105px]" onchange="updateDateButton()">
+                            <span class="text-textMuted text-[10px]">to</span>
+                            <input type="date" id="filter-to" class="bg-transparent border-none text-xs text-textSecondary outline-none w-[105px]" onchange="updateDateButton()">
+                            <button id="date-filter-btn" onclick="handleDateButton()" class="ml-1 px-2 py-0.5 text-[11px] font-medium rounded-md bg-white border border-gray-200 text-textSecondary hover:bg-gray-100 transition">Apply</button>
+                        </div>
+                        <!-- Org info (shown on non-filter pages) -->
+                        <div id="header-org-info" class="hidden flex items-center gap-3">
+                            <div class="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+                                <div class="w-2 h-2 rounded-full bg-success animate-pulse"></div>
+                                <span class="text-xs text-textSecondary" id="header-org-name">Organization</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-[10px] text-textMuted">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span id="header-last-updated">Live</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <main class="px-5 py-4">
+                <!-- Breadcrumb -->
+                <nav id="breadcrumb" class="mb-3 flex items-center text-xs flex-wrap"></nav>
+
+                <!-- Loading indicator -->
+                <div id="loading" class="hidden text-center py-10">
+                    <div class="spinner mx-auto mb-3" style="width:28px;height:28px;border-width:3px;"></div>
+                    <p class="text-textMuted text-xs">Loading data...</p>
+                </div>
+
+                <!-- Content area -->
+                <div id="content-area"></div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ===== JAVASCRIPT ===== -->
+    <script>
+    // ===== CONFIG =====
+    const API_BASE = '/api/analytics';
+
+    // ===== CHART DEFAULTS =====
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(17, 24, 39, 0.9)';
+    Chart.defaults.plugins.tooltip.titleFont = { size: 12, weight: '600' };
+    Chart.defaults.plugins.tooltip.bodyFont = { size: 11 };
+    Chart.defaults.plugins.tooltip.padding = { top: 8, bottom: 8, left: 12, right: 12 };
+    Chart.defaults.plugins.tooltip.cornerRadius = 8;
+    Chart.defaults.plugins.tooltip.displayColors = true;
+    Chart.defaults.plugins.tooltip.boxPadding = 4;
+
+    // ===== STATE =====
+    let state = {
+        orgId: null,
+        orgName: null,
+        fromDate: null,
+        toDate: null,
+        breadcrumb: [],
+        currentNav: 'dashboard'
+    };
+
+    // ===== INIT =====
+    document.addEventListener('DOMContentLoaded', () => {
+        const saved = sessionStorage.getItem('analyticsSession');
+        const token = sessionStorage.getItem('authToken');
+        if (saved && token) {
+            const session = JSON.parse(saved);
+            state.orgId = session.orgId;
+            state.orgName = session.orgName;
+            showDashboard();
+            loadOrgSummary();
+        }
+    });
+
+    // ===== API HELPER =====
+    async function apiCall(endpoint) {
+        let url = `${API_BASE}${endpoint}`;
+        const params = new URLSearchParams();
+        if (state.fromDate) params.set('fromDate', state.fromDate);
+        if (state.toDate) params.set('toDate', state.toDate);
+        if (params.toString()) url += (url.includes('?') ? '&' : '?') + params.toString();
+
+        const headers = { 'Content-Type': 'application/json' };
+        const token = sessionStorage.getItem('authToken');
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+
+        const res = await fetch(url, { headers });
+
+        if (res.status === 401) {
+            handleLogout();
+            alert('Session expired. Please login again.');
+            throw new Error('Unauthorized');
+        }
+        if (res.status === 429) {
+            alert('Too many requests. Please wait a moment.');
+            throw new Error('Rate limited');
+        }
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        return res.json();
+    }
+
+    // ===== LOGIN =====
+    async function handleLogin(e) {
+        e.preventDefault();
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        const errorEl = document.getElementById('login-error');
+        const btnText = document.getElementById('login-btn-text');
+        const spinner = document.getElementById('login-spinner');
+
+        errorEl.classList.add('hidden');
+        btnText.textContent = 'Signing in...';
+        spinner.classList.remove('hidden');
+
+        try {
+            const res = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+
+            if (!data.success) {
+                errorEl.classList.remove('hidden');
+                document.getElementById('login-error-text').textContent = data.message || 'Invalid credentials';
+                return;
+            }
+
+            state.orgId = data.organizationId;
+            state.orgName = data.organizationName;
+            sessionStorage.setItem('analyticsSession', JSON.stringify({ orgId: state.orgId, orgName: state.orgName }));
+            sessionStorage.setItem('authToken', data.token);
+            showDashboard();
+            loadOrgSummary();
+        } catch (err) {
+            errorEl.classList.remove('hidden');
+            document.getElementById('login-error-text').textContent = 'Connection error. Please try again.';
+        } finally {
+            btnText.textContent = 'Sign In';
+            spinner.classList.add('hidden');
+        }
+    }
+
+    function handleLogout() {
+        const token = sessionStorage.getItem('authToken');
+        if (token) {
+            fetch(`${API_BASE}/logout`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
+        }
+        sessionStorage.removeItem('analyticsSession');
+        sessionStorage.removeItem('authToken');
+        state = { orgId: null, orgName: null, fromDate: null, toDate: null, breadcrumb: [], currentNav: 'dashboard' };
+        document.getElementById('dashboard-page').classList.add('hidden');
+        document.getElementById('login-page').classList.remove('hidden');
+        document.getElementById('login-username').value = '';
+        document.getElementById('login-password').value = '';
+    }
+
+    function showDashboard() {
+        document.getElementById('login-page').classList.add('hidden');
+        document.getElementById('dashboard-page').classList.remove('hidden');
+        updateHeaderForPage('dashboard');
+    }
+
+    // ===== SIDEBAR NAVIGATION =====
+    function toggleMobileSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('hidden');
+    }
+
+    function updateHeaderForPage(section) {
+        const dateFilter = document.getElementById('header-date-filter');
+        const orgInfo = document.getElementById('header-org-info');
+        if (!dateFilter || !orgInfo) return;
+        
+        if (section === 'dashboard' || section === 'licenses') {
+            dateFilter.classList.remove('hidden');
+            dateFilter.classList.add('flex');
+            orgInfo.classList.add('hidden');
+            orgInfo.classList.remove('flex');
+        } else {
+            dateFilter.classList.add('hidden');
+            dateFilter.classList.remove('flex');
+            orgInfo.classList.remove('hidden');
+            orgInfo.classList.add('flex');
+            // Update org name
+            const orgNameEl = document.getElementById('header-org-name');
+            if (orgNameEl) orgNameEl.textContent = state.orgName || 'Organization';
+            // Update last updated time
+            const lastUpdated = document.getElementById('header-last-updated');
+            if (lastUpdated) {
+                const now = new Date();
+                lastUpdated.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            }
+        }
+    }
+
+    function navigateSidebar(section) {
+        state.currentNav = section;
+        // Close mobile sidebar
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (sidebar) sidebar.classList.remove('open');
+        if (overlay) overlay.classList.add('hidden');
+        // Update header right side
+        updateHeaderForPage(section);
+        // Update active state
+        document.querySelectorAll('.sidebar-link').forEach(link => {
+            link.classList.toggle('active', link.dataset.nav === section);
+        });
+        
+        if (section === 'dashboard') {
+            document.getElementById('page-title').textContent = 'Dashboard';
+            loadOrgSummary();
+        } else if (section === 'insights') {
+            document.getElementById('page-title').textContent = 'Insights';
+            loadInsightsPage();
+        } else if (section === 'licenses') {
+            document.getElementById('page-title').textContent = 'Licenses';
+            loadLicensesPage();
+        } else if (section === 'heatmap') {
+            document.getElementById('page-title').textContent = 'Heatmap';
+            loadHeatmapPage();
+        }
+    }
+
+    function navigateBack() {
+        if (state.breadcrumb.length > 1) {
+            state.breadcrumb.pop();
+            const last = state.breadcrumb[state.breadcrumb.length - 1];
+            if (last) last.action();
+        }
+    }
+
+    // ===== DATE FILTER =====
+    function applyDateFilter() {
+        state.fromDate = document.getElementById('filter-from').value || null;
+        state.toDate = document.getElementById('filter-to').value || null;
+        const last = state.breadcrumb[state.breadcrumb.length - 1];
+        if (last) last.action();
+        else loadOrgSummary();
+        updateDateButton();
+    }
+
+    function handleDateButton() {
+        const from = document.getElementById('filter-from').value;
+        const to = document.getElementById('filter-to').value;
+        if (state.fromDate || state.toDate) {
+            document.getElementById('filter-from').value = '';
+            document.getElementById('filter-to').value = '';
+            state.fromDate = null;
+            state.toDate = null;
+            const last = state.breadcrumb[state.breadcrumb.length - 1];
+            if (last) last.action();
+            else loadOrgSummary();
+            updateDateButton();
+        } else {
+            applyDateFilter();
+        }
+    }
+
+    function updateDateButton() {
+        const btn = document.getElementById('date-filter-btn');
+        if (!btn) return;
+        const from = document.getElementById('filter-from').value;
+        const to = document.getElementById('filter-to').value;
+        if (state.fromDate || state.toDate) {
+            btn.textContent = 'Clear';
+            btn.className = 'ml-1 px-3 py-1 text-xs font-medium rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 transition';
+        } else if (from || to) {
+            btn.textContent = 'Apply';
+            btn.className = 'ml-1 px-3 py-1 text-xs font-medium rounded-lg bg-brand text-white hover:bg-indigo-700 transition';
+        } else {
+            btn.textContent = 'Apply';
+            btn.className = 'ml-1 px-3 py-1 text-xs font-medium rounded-lg bg-white border border-gray-200 text-textSecondary hover:bg-gray-100 transition';
+        }
+    }
+
+    // ===== LOADING =====
+    function showLoading() { document.getElementById('loading').classList.remove('hidden'); document.getElementById('content-area').innerHTML = ''; }
+    function hideLoading() { document.getElementById('loading').classList.add('hidden'); }
+
+    function showTableLoading() {
+        const tbody = document.getElementById('license-tbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center px-6 py-8"><div class="flex items-center justify-center gap-3"><div class="spinner"></div><span class="text-textMuted text-sm">Loading...</span></div></td></tr>`;
+        }
+    }
+    function hideTableLoading() {}
+
+    // ===== BREADCRUMB =====
+    function renderBreadcrumb() {
+        const nav = document.getElementById('breadcrumb');
+        if (state.breadcrumb.length <= 1) { nav.innerHTML = ''; return; }
+        nav.innerHTML = state.breadcrumb.map((item, i) => {
+            const isLast = i === state.breadcrumb.length - 1;
+            if (isLast) return `<span class="breadcrumb-item text-textPrimary font-semibold text-sm">${item.label}</span>`;
+            return `<span class="breadcrumb-item text-brand font-medium text-sm cursor-pointer hover:underline" onclick="navigateTo(${i})">${item.label}</span>`;
+        }).join('');
+    }
+
+    function navigateTo(index) {
+        state.breadcrumb = state.breadcrumb.slice(0, index + 1);
+        state.breadcrumb[index].action();
+    }
+
+    // ===== SECURITY =====
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function platformIcon(platform) {
+        if (!platform) return '';
+        const p = platform.toLowerCase();
+        if (p === 'windows') return `<img src="/images/windows.svg" alt="Windows" title="Windows" class="inline-block mr-2 w-4 h-4">`;
+        if (p === 'android') return `<img src="/images/android.svg" alt="Android" title="Android" class="inline-block mr-2 w-4 h-4">`;
+        return `<span class="inline-block mr-2 text-xs text-textMuted" title="${escapeHtml(platform)}">[${escapeHtml(platform)}]</span>`;
+    }
+
+    // ===== FORMATTERS =====
+    function formatTime(seconds) {
+        if (!seconds || seconds === 0) return '0m';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        return h > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
+    }
+    function formatDate(dateStr) {
+        if (!dateStr) return '—';
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    // ===== LEVEL 1: ORG SUMMARY (DASHBOARD) =====
+    let licenseState = { page: 1, pageSize: 10, search: '', status: '', sortBy: 'totalUsageSeconds', sortDir: 'desc', currentItems: [] };
+
+    async function loadOrgSummary() {
+        state.breadcrumb = [{ label: state.orgName, action: loadOrgSummary }];
+        renderBreadcrumb();
+        showLoading();
+
+        try {
+            licenseState = { page: 1, pageSize: 10, search: '', status: '', sortBy: 'totalUsageSeconds', sortDir: 'desc', currentItems: [] };
+            hideLoading();
+            const area = document.getElementById('content-area');
+
+            area.innerHTML = `
+                <div class="fade-in">
+                    <!-- Stat Cards Row -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4" id="summary-cards">
+                        ${statCard('Total Licenses', '...', '', 'indigo', 'loading')}
+                        ${statCard('Total Sessions', '...', '', 'green', 'loading')}
+                        ${statCard('Total Time', '...', '', 'blue', 'loading')}
+                        ${statCard('Video Time', '...', '', 'purple', 'loading')}
+                        ${statCard('Simulation Time', '...', '', 'orange', 'loading')}
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+                        <!-- Usage Trend (Commerce-style line chart) -->
+                        <div class="lg:col-span-2 bg-white rounded-xl p-4 shadow-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-xs font-semibold text-textPrimary">Usage Trend</h3>
+                                <div class="flex gap-3 text-[10px]">
+                                    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-purple"></span> Video</span>
+                                    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-orange"></span> Simulation</span>
+                                </div>
+                            </div>
+                            <div style="height: 140px;"><canvas id="chart-trend"></canvas></div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="flex flex-col gap-3">
+                            <!-- Content Distribution (Donut) -->
+                            <div class="bg-white rounded-xl p-4 shadow-card flex-1">
+                                <h3 class="text-xs font-semibold text-textPrimary mb-2">Content Distribution</h3>
+                                <div class="flex items-center gap-3">
+                                    <div style="width:70px;height:70px;"><canvas id="chart-donut"></canvas></div>
+                                    <div class="flex-1">
+                                        <p class="text-xl font-bold text-textPrimary" id="donut-percentage">—</p>
+                                        <div class="mt-1 space-y-0.5">
+                                            <div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-purple"></span><span class="text-[10px] text-textSecondary" id="donut-video-label">Video</span></div>
+                                            <div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-orange"></span><span class="text-[10px] text-textSecondary" id="donut-sim-label">Simulation</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Sessions bar chart -->
+                            <div class="bg-white rounded-xl p-4 shadow-card flex-1">
+                                <h3 class="text-xs font-semibold text-textPrimary mb-2">Daily Sessions</h3>
+                                <div style="height: 60px;"><canvas id="chart-sessions-bar"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- License Table -->
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <div class="px-4 py-3 flex items-center justify-between border-b border-borderLight">
+                            <h3 class="text-xs font-semibold text-textPrimary">License-wise Usage</h3>
+                            <div class="flex items-center gap-2">
+                                <div class="relative">
+                                    <input type="text" id="license-search" placeholder="Search license key..."
+                                        class="border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs w-40 input-focus transition pl-7"
+                                        onkeyup="handleLicenseSearch(event)">
+                                    <svg class="w-3 h-3 text-textMuted absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                </div>
+                                <span class="text-[10px] font-semibold text-brand bg-brandLight px-2 py-1 rounded-md" id="license-total-badge">...</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="border-b border-borderLight">
+                                        <th class="text-left px-4 py-2 text-[10px] font-medium text-textMuted">License Key</th>
+                                        <th class="text-left px-3 py-2 text-[10px] font-medium text-textMuted">Consumer</th>
+                                        <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted cursor-pointer hover:text-brand" onclick="sortLicenses('totalSessions')">Sessions</th>
+                                        <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted cursor-pointer hover:text-brand" onclick="sortLicenses('totalUsageSeconds')">Total Time</th>
+                                        <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted cursor-pointer hover:text-brand" onclick="sortLicenses('videoUsageSeconds')">Video</th>
+                                        <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted cursor-pointer hover:text-brand" onclick="sortLicenses('simulationUsageSeconds')">Simulation</th>
+                                        <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Grades</th>
+                                        <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted cursor-pointer hover:text-brand" onclick="sortLicenses('lastUsageDate')">Last Usage</th>
+                                        <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="license-tbody" class="divide-y divide-borderLight">
+                                    <tr><td colspan="9" class="text-center px-4 py-6"><div class="flex items-center justify-center gap-2"><div class="spinner"></div><span class="text-textMuted text-xs">Loading...</span></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="license-pagination" class="px-4 py-3 border-t border-borderLight flex items-center justify-between"></div>
+                    </div>
+                </div>
+            `;
+
+            // Load data progressively
+            loadLicensePage(1, '', '').then(licenses => {
+                document.getElementById('license-tbody').innerHTML = renderLicenseRows(licenses.items);
+                document.getElementById('license-pagination').innerHTML = renderPagination(licenses);
+                document.getElementById('license-total-badge').textContent = licenses.totalCount + ' licenses';
+            }).catch(() => {});
+
+            apiCall(`/organization/${state.orgId}/summary`).then(summary => {
+                document.getElementById('summary-cards').innerHTML = `
+                    ${statCard('Total Licenses', summary.totalLicenses, 'installations', 'indigo')}
+                    ${statCard('Total Sessions', summary.totalSessions.toLocaleString(), 'content views', 'green')}
+                    ${statCard('Total Time', summary.totalTime, 'engagement', 'blue')}
+                    ${statCard('Video Time', summary.videoTime, summary.videoPercentage + '% of total', 'purple')}
+                    ${statCard('Simulation Time', summary.simulationTime, summary.simulationPercentage + '% of total', 'orange')}
+                `;
+                renderDonutChart(summary.videoUsageSeconds, summary.simulationUsageSeconds, summary.videoPercentage, summary.simulationPercentage);
+            }).catch(() => {});
+
+            apiCall(`/organization/${state.orgId}/trend`).then(trend => {
+                renderTrendChart(trend);
+                renderSessionsBarChart(trend);
+            }).catch(() => {});
+
+        } catch (err) {
+            hideLoading();
+            document.getElementById('content-area').innerHTML = `<div class="text-center py-12 text-red-500">Error loading data: ${err.message}</div>`;
+        }
+    }
+
+    // ===== INSIGHTS PAGE =====
+    async function loadInsightsPage() {
+        state.breadcrumb = [{ label: 'Insights', action: loadInsightsPage }];
+        renderBreadcrumb();
+        showLoading();
+        hideLoading();
+
+        const area = document.getElementById('content-area');
+        area.innerHTML = `
+            <div class="fade-in space-y-3">
+                <!-- Comparison -->
+                <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                    <div class="px-4 py-3 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Comparative Analysis (Last 30 Days vs Previous)</h3></div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="comparison-cards">
+                            <div class="text-center py-3 text-textMuted text-xs col-span-4"><div class="spinner mx-auto mb-2"></div>Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Top Grades + Inactive -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <div class="px-4 py-3 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Top Grades by Usage</h3></div>
+                        <div class="p-4" id="top-bottom-content"><div class="spinner mx-auto"></div></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <div class="px-4 py-3 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Inactive Licenses (7+ days)</h3></div>
+                        <div class="p-4" id="inactive-content"><div class="spinner mx-auto"></div></div>
+                    </div>
+                </div>
+                <!-- Popular + Least Engaged -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <div class="px-4 py-3 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Most Popular Topics</h3></div>
+                        <div class="p-4" id="popular-topics-content"><div class="spinner mx-auto"></div></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <div class="px-4 py-3 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Least Engaged Topics</h3></div>
+                        <div class="p-4" id="least-engaged-content"><div class="spinner mx-auto"></div></div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        Promise.all([
+            apiCall(`/organization/${state.orgId}/comparison?days=30`).then(renderComparison).catch(() => {}),
+            apiCall(`/organization/${state.orgId}/inactive-licenses?days=7`).then(renderInactive).catch(() => {}),
+            apiCall(`/organization/${state.orgId}/top-bottom`).then(renderTopBottom).catch(() => { const el = document.getElementById('top-bottom-content'); if(el) el.innerHTML = '<p class="text-textMuted text-xs">Data will be available after processing.</p>'; }),
+            apiCall(`/organization/${state.orgId}/popular-topics`).then(renderPopularTopics).catch(() => { const el = document.getElementById('popular-topics-content'); if(el) el.innerHTML = '<p class="text-textMuted text-xs">Data will be available after processing.</p>'; }),
+            apiCall(`/organization/${state.orgId}/least-engaged-topics`).then(renderLeastEngaged).catch(() => { const el = document.getElementById('least-engaged-content'); if(el) el.innerHTML = '<p class="text-textMuted text-xs">Data will be available after processing.</p>'; })
+        ]);
+    }
+
+    // ===== LICENSES PAGE =====
+    async function loadLicensesPage() {
+        state.breadcrumb = [{ label: 'Licenses', action: loadLicensesPage }];
+        renderBreadcrumb();
+        showLoading();
+        hideLoading();
+        licenseState = { page: 1, pageSize: 15, search: '', status: '', sortBy: 'totalUsageSeconds', sortDir: 'desc', currentItems: [] };
+
+        const area = document.getElementById('content-area');
+        area.innerHTML = `
+            <div class="fade-in">
+                <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                    <div class="px-4 py-3 flex items-center justify-between border-b border-borderLight flex-wrap gap-2">
+                        <h3 class="text-xs font-semibold text-textPrimary">All Licenses</h3>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <select id="license-status-filter" onchange="handleStatusFilter()" class="border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-textSecondary input-focus cursor-pointer">
+                                <option value="">All Licenses</option>
+                                <option value="with_usage">With Usage</option>
+                                <option value="without_usage">Without Usage</option>
+                            </select>
+                            <div class="relative">
+                                <input type="text" id="license-search" placeholder="Search license key..."
+                                    class="border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs w-44 input-focus transition pl-7"
+                                    onkeyup="handleLicenseSearch(event)">
+                                <svg class="w-3 h-3 text-textMuted absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            </div>
+                            <span class="text-[10px] font-semibold text-brand bg-brandLight px-2 py-1 rounded-md" id="license-total-badge">...</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs">
+                            <thead><tr class="border-b border-borderLight">
+                                <th class="text-left px-4 py-2 text-[10px] font-medium text-textMuted">License Key</th>
+                                <th class="text-left px-3 py-2 text-[10px] font-medium text-textMuted">Consumer</th>
+                                <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted cursor-pointer hover:text-brand" onclick="sortLicenses('totalSessions')">Sessions</th>
+                                <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted cursor-pointer hover:text-brand" onclick="sortLicenses('totalUsageSeconds')">Total Time</th>
+                                <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted cursor-pointer hover:text-brand" onclick="sortLicenses('videoUsageSeconds')">Video</th>
+                                <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted cursor-pointer hover:text-brand" onclick="sortLicenses('simulationUsageSeconds')">Simulation</th>
+                                <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Grades</th>
+                                <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted cursor-pointer hover:text-brand" onclick="sortLicenses('lastUsageDate')">Last Usage</th>
+                                <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Action</th>
+                            </tr></thead>
+                            <tbody id="license-tbody" class="divide-y divide-borderLight">
+                                <tr><td colspan="9" class="text-center px-4 py-6"><div class="spinner mx-auto"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="license-pagination" class="px-4 py-3 border-t border-borderLight flex items-center justify-between"></div>
+                </div>
+            </div>
+        `;
+
+        const licenses = await loadLicensePage(1, '', '');
+        document.getElementById('license-tbody').innerHTML = renderLicenseRows(licenses.items);
+        document.getElementById('license-pagination').innerHTML = renderPagination(licenses);
+        document.getElementById('license-total-badge').textContent = licenses.totalCount + ' licenses';
+    }
+
+    // ===== HEATMAP PAGE =====
+    async function loadHeatmapPage() {
+        state.breadcrumb = [{ label: 'Heatmap', action: loadHeatmapPage }];
+        renderBreadcrumb();
+        showLoading();
+        hideLoading();
+
+        const area = document.getElementById('content-area');
+        area.innerHTML = `
+            <div class="fade-in">
+                <!-- Peak Stats Cards -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4" id="heatmap-stats">
+                    <div class="bg-white rounded-xl p-3 shadow-card"><p class="text-[10px] text-textMuted uppercase">Total Usage</p><p class="text-lg font-bold text-textPrimary mt-0.5" id="hm-total">—</p><p class="text-[10px] text-textMuted">minutes</p></div>
+                    <div class="bg-white rounded-xl p-3 shadow-card"><p class="text-[10px] text-textMuted uppercase">Peak Hour</p><p class="text-lg font-bold text-brand mt-0.5" id="hm-peak-hour">—</p><p class="text-[10px] text-textMuted" id="hm-peak-hour-val"></p></div>
+                    <div class="bg-white rounded-xl p-3 shadow-card"><p class="text-[10px] text-textMuted uppercase">Busiest Day</p><p class="text-lg font-bold text-success mt-0.5" id="hm-peak-day">—</p><p class="text-[10px] text-textMuted" id="hm-peak-day-val"></p></div>
+                    <div class="bg-white rounded-xl p-3 shadow-card"><p class="text-[10px] text-textMuted uppercase">Avg / Slot</p><p class="text-lg font-bold text-purple mt-0.5" id="hm-avg">—</p><p class="text-[10px] text-textMuted">min per active slot</p></div>
+                </div>
+
+                <!-- Heatmap Grid -->
+                <div class="bg-white rounded-xl shadow-card overflow-hidden mb-4">
+                    <div class="px-4 py-3 border-b border-borderLight flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xs font-semibold text-textPrimary">Usage Heatmap (Hour × Day)</h3>
+                            <p class="text-[10px] text-textMuted mt-0.5" id="heatmap-date-range"></p>
+                        </div>
+                        <div class="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
+                            <button onclick="loadHeatmap(7)" id="heatmap-btn-7" class="period-btn">7D</button>
+                            <button onclick="loadHeatmap(30)" id="heatmap-btn-30" class="period-btn active">30D</button>
+                            <button onclick="loadHeatmap(90)" id="heatmap-btn-90" class="period-btn">90D</button>
+                        </div>
+                    </div>
+                    <div class="p-4" id="heatmap-content"><div class="flex items-center justify-center py-6"><div class="spinner"></div></div></div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <!-- Usage by Day of Week -->
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <div class="px-4 py-3 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Usage by Day of Week</h3></div>
+                        <div class="p-4"><div style="height:140px"><canvas id="chart-heatmap-days"></canvas></div></div>
+                    </div>
+                    <!-- Usage by Hour -->
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <div class="px-4 py-3 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Hourly Distribution</h3></div>
+                        <div class="p-4"><div style="height:140px"><canvas id="chart-heatmap-hours"></canvas></div></div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        try {
+            const data = await apiCall(`/organization/${state.orgId}/heatmap?days=30`);
+            renderHeatmap(data, 30);
+            renderHeatmapInsights(data);
+        } catch(e) {}
+    }
+
+    // ===== INSIGHT RENDERERS =====
+    function renderComparison(data) {
+        const el = document.getElementById('comparison-cards');
+        if (!el) return;
+        const arrow = (val) => val > 0 ? `<span class="text-success text-[10px] font-semibold">↑ ${val}%</span>` : val < 0 ? `<span class="text-danger text-[10px] font-semibold">↓ ${Math.abs(val)}%</span>` : `<span class="text-textMuted text-[10px]">— 0%</span>`;
+        const noData = data.current.TotalSessions === 0 && data.previous.TotalSessions === 0;
+        if (noData) { el.innerHTML = `<div class="text-center py-3 col-span-4"><p class="text-textMuted text-xs">No data for comparison.</p></div>`; return; }
+        el.innerHTML = `
+            <div class="bg-pageBg rounded-lg p-3 text-center"><p class="text-[10px] text-textMuted mb-0.5">Sessions</p><p class="text-base font-bold text-textPrimary">${data.current.TotalSessions.toLocaleString()}</p><p class="mt-0.5">${arrow(data.change.sessions)}</p></div>
+            <div class="bg-pageBg rounded-lg p-3 text-center"><p class="text-[10px] text-textMuted mb-0.5">Total Time</p><p class="text-base font-bold text-textPrimary">${formatTime(data.current.TotalUsageSeconds)}</p><p class="mt-0.5">${arrow(data.change.totalTime)}</p></div>
+            <div class="bg-pageBg rounded-lg p-3 text-center"><p class="text-[10px] text-textMuted mb-0.5">Video</p><p class="text-base font-bold text-purple">${formatTime(data.current.VideoUsageSeconds)}</p><p class="mt-0.5">${arrow(data.change.video)}</p></div>
+            <div class="bg-pageBg rounded-lg p-3 text-center"><p class="text-[10px] text-textMuted mb-0.5">Simulation</p><p class="text-base font-bold text-orange">${formatTime(data.current.SimulationUsageSeconds)}</p><p class="mt-0.5">${arrow(data.change.simulation)}</p></div>
+        `;
+    }
+
+    function renderInactive(data) {
+        const el = document.getElementById('inactive-content');
+        if (!el) return;
+        if (data.count === 0) { el.innerHTML = `<p class="text-success font-medium text-xs">✓ All licenses are active!</p>`; return; }
+        el.innerHTML = `
+            <p class="text-warning font-medium text-xs mb-3">${data.count} license(s) idle for ${data.days}+ days</p>
+            <div class="space-y-0 max-h-60 overflow-y-auto pr-2">
+                ${data.licenses.map(l => `
+                    <div class="flex items-center justify-between py-2 border-b border-borderLight gap-2">
+                        <div class="flex items-center gap-2 min-w-0 flex-1">${platformIcon(l.platform)}<span class="font-mono text-[11px] text-textPrimary">${escapeHtml(l.licenseKey)}</span></div>
+                        <span class="text-[10px] text-danger font-semibold whitespace-nowrap flex-shrink-0">${l.daysInactive}d idle</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function renderTopBottom(data) {
+        const el = document.getElementById('top-bottom-content');
+        if (!el) return;
+        if (!data.topGrades || data.topGrades.length === 0) { el.innerHTML = `<p class="text-textMuted text-xs">No grade data.</p>`; return; }
+        const hasData = data.topGrades.some(g => g.TotalSeconds > 0);
+        if (!hasData) { el.innerHTML = `<p class="text-textMuted text-xs">No usage data available.</p>`; return; }
+        const maxVal = data.topGrades[0]?.TotalSeconds || 1;
+        el.innerHTML = `<div class="space-y-2.5 pr-1">${data.topGrades.filter(g => g.TotalSeconds > 0).map((g, i) => `
+            <div class="flex items-center gap-3">
+                <span class="w-5 h-5 rounded-md bg-brand/10 text-brand text-[10px] font-bold flex items-center justify-center flex-shrink-0">${i+1}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center mb-1"><span class="text-xs font-medium text-textPrimary">${escapeHtml(g.Grade || 'Unknown')}</span><span class="text-[11px] font-semibold text-textSecondary ml-2 flex-shrink-0">${formatTime(g.TotalSeconds || 0)}</span></div>
+                    <div class="w-full bg-gray-100 rounded-full h-1.5"><div class="bg-brand h-1.5 rounded-full transition-all" style="width: ${Math.round((g.TotalSeconds || 0) / maxVal * 100)}%"></div></div>
+                </div>
+            </div>
+        `).join('')}</div>`;
+    }
+
+    function renderPopularTopics(data) {
+        const el = document.getElementById('popular-topics-content');
+        if (!el) return;
+        if (!data || data.length === 0) { el.innerHTML = `<p class="text-textMuted text-xs">No topic data.</p>`; return; }
+        el.innerHTML = `<div class="space-y-0 max-h-72 overflow-y-auto pr-2">${data.map((t, i) => `
+            <div class="flex items-center justify-between py-2.5 border-b border-borderLight gap-3">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span class="w-5 h-5 rounded-md bg-brand/10 text-brand text-[10px] font-bold flex items-center justify-center flex-shrink-0">${i+1}</span>
+                    <span class="text-xs text-textPrimary leading-tight">${escapeHtml(t.topicName)}</span>
+                </div>
+                <span class="text-[11px] font-semibold text-textSecondary whitespace-nowrap flex-shrink-0">${formatTime(t.totalUsageSeconds)}</span>
+            </div>
+        `).join('')}</div>`;
+    }
+
+    function renderLeastEngaged(data) {
+        const el = document.getElementById('least-engaged-content');
+        if (!el) return;
+        if (!data || data.length === 0) { el.innerHTML = `<p class="text-success text-xs">✓ No topics with low engagement.</p>`; return; }
+        el.innerHTML = `<div class="space-y-0 max-h-72 overflow-y-auto pr-2">${data.map((t, i) => `
+            <div class="flex items-center justify-between py-2.5 border-b border-borderLight gap-3">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span class="w-5 h-5 rounded-md bg-red-50 text-danger text-[10px] font-bold flex items-center justify-center flex-shrink-0">${i+1}</span>
+                    <span class="text-xs text-textPrimary leading-tight">${escapeHtml(t.topicName)}</span>
+                </div>
+                <span class="text-[11px] font-semibold text-danger whitespace-nowrap flex-shrink-0">avg ${t.avgUsageSeconds}s</span>
+            </div>
+        `).join('')}</div>`;
+    }
+
+    function renderHeatmap(data, days) {
+        const el = document.getElementById('heatmap-content');
+        if (!el) return;
+        const dateLabel = document.getElementById('heatmap-date-range');
+        if (dateLabel) {
+            const toDate = new Date();
+            const fromDate = new Date(); fromDate.setDate(fromDate.getDate() - days);
+            dateLabel.textContent = `${fromDate.toLocaleDateString('en-US', {month:'short', day:'numeric'})} — ${toDate.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}`;
+        }
+        [7, 30, 90].forEach(d => {
+            const btn = document.getElementById(`heatmap-btn-${d}`);
+            if (btn) { btn.className = d === days ? 'period-btn active' : 'period-btn'; }
+        });
+        if (!data || data.length === 0) { el.innerHTML = `<p class="text-textMuted text-sm text-center py-4">No heatmap data.</p>`; return; }
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const maxMin = Math.max(...data.map(d => d.minutes), 1);
+        let grid = '';
+        for (let day = 0; day < 7; day++) {
+            grid += `<div class="flex items-center gap-1"><span class="text-xs text-textMuted w-8 flex-shrink-0">${dayNames[day]}</span>`;
+            for (let hour = 0; hour < 24; hour++) {
+                const cell = data.find(d => d.dayOfWeek === day && d.hour === hour);
+                const val = cell ? cell.minutes : 0;
+                const intensity = Math.round(val / maxMin * 100);
+                let color = 'bg-gray-100';
+                if (intensity > 75) color = 'bg-indigo-600';
+                else if (intensity > 50) color = 'bg-indigo-400';
+                else if (intensity > 25) color = 'bg-indigo-200';
+                else if (intensity > 5) color = 'bg-indigo-100';
+                grid += `<div class="w-5 h-5 rounded ${color} transition hover:scale-125" title="${dayNames[day]} ${hour}:00 — ${val} min"></div>`;
+            }
+            grid += `</div>`;
+        }
+        const hourLabels = `<div class="flex items-center gap-1 ml-9">${Array.from({length:24}, (_, i) => `<span class="w-5 text-center text-[10px] text-textMuted">${i % 3 === 0 ? i : ''}</span>`).join('')}</div>`;
+        el.innerHTML = `<div class="space-y-1">${grid}${hourLabels}</div>
+            <div class="flex items-center gap-2 mt-4 text-xs text-textMuted"><span>Less</span><div class="w-4 h-4 rounded bg-gray-100"></div><div class="w-4 h-4 rounded bg-indigo-100"></div><div class="w-4 h-4 rounded bg-indigo-200"></div><div class="w-4 h-4 rounded bg-indigo-400"></div><div class="w-4 h-4 rounded bg-indigo-600"></div><span>More</span></div>`;
+    }
+
+    async function loadHeatmap(days) {
+        const el = document.getElementById('heatmap-content');
+        if (el) el.innerHTML = '<div class="flex items-center justify-center py-8"><div class="spinner"></div></div>';
+        try { const data = await apiCall(`/organization/${state.orgId}/heatmap?days=${days}`); renderHeatmap(data, days); renderHeatmapInsights(data); } catch(e) {}
+    }
+
+    function renderHeatmapInsights(data) {
+        if (!data || data.length === 0) return;
+        const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        
+        // Calculate stats
+        const totalMin = data.reduce((s, d) => s + d.minutes, 0);
+        const activeSlots = data.filter(d => d.minutes > 0).length;
+        const avgPerSlot = activeSlots > 0 ? Math.round(totalMin / activeSlots) : 0;
+        
+        // Peak hour
+        const hourTotals = {};
+        data.forEach(d => { hourTotals[d.hour] = (hourTotals[d.hour] || 0) + d.minutes; });
+        const peakHour = Object.entries(hourTotals).sort((a,b) => b[1] - a[1])[0];
+        
+        // Peak day
+        const dayTotals = {};
+        data.forEach(d => { dayTotals[d.dayOfWeek] = (dayTotals[d.dayOfWeek] || 0) + d.minutes; });
+        const peakDay = Object.entries(dayTotals).sort((a,b) => b[1] - a[1])[0];
+        
+        // Update stat cards
+        const elTotal = document.getElementById('hm-total');
+        const elPeakHour = document.getElementById('hm-peak-hour');
+        const elPeakHourVal = document.getElementById('hm-peak-hour-val');
+        const elPeakDay = document.getElementById('hm-peak-day');
+        const elPeakDayVal = document.getElementById('hm-peak-day-val');
+        const elAvg = document.getElementById('hm-avg');
+        
+        if (elTotal) elTotal.textContent = totalMin.toLocaleString();
+        if (elPeakHour && peakHour) { elPeakHour.textContent = `${peakHour[0]}:00`; }
+        if (elPeakHourVal && peakHour) { elPeakHourVal.textContent = `${peakHour[1]} min total`; }
+        if (elPeakDay && peakDay) { elPeakDay.textContent = dayNames[peakDay[0]]; }
+        if (elPeakDayVal && peakDay) { elPeakDayVal.textContent = `${peakDay[1]} min total`; }
+        if (elAvg) elAvg.textContent = avgPerSlot;
+        
+        // Day of week chart
+        const dayChart = document.getElementById('chart-heatmap-days');
+        if (dayChart) {
+            const dayData = dayNames.map((_, i) => dayTotals[i] || 0);
+            new Chart(dayChart, {
+                type: 'bar',
+                data: { labels: dayNames, datasets: [{ data: dayData, backgroundColor: dayData.map((v, i) => peakDay && i == peakDay[0] ? '#4F46E5' : '#C7D2FE'), borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 9 } }, title: { display: true, text: 'Minutes', font: { size: 9 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
+            });
+        }
+        
+        // Hourly distribution chart
+        const hourChart = document.getElementById('chart-heatmap-hours');
+        if (hourChart) {
+            const hourData = Array.from({length: 24}, (_, i) => hourTotals[i] || 0);
+            new Chart(hourChart, {
+                type: 'line',
+                data: { labels: Array.from({length: 24}, (_, i) => `${i}:00`), datasets: [{ data: hourData, borderColor: '#4F46E5', backgroundColor: 'rgba(79,70,229,0.06)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 9 } }, title: { display: true, text: 'Minutes', font: { size: 9 } } }, x: { grid: { display: false }, ticks: { font: { size: 8 }, maxTicksLimit: 12 } } } }
+            });
+        }
+    }
+
+    // ===== LICENSE TABLE =====
+    async function loadLicensePage(page, search, status) {
+        licenseState.page = page;
+        licenseState.search = search;
+        licenseState.status = status;
+        let url = `/organization/${state.orgId}/licenses?page=${page}&pageSize=${licenseState.pageSize}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (status) url += `&status=${encodeURIComponent(status)}`;
+        if (licenseState.sortBy) url += `&sortBy=${licenseState.sortBy}`;
+        if (licenseState.sortDir) url += `&sortDir=${licenseState.sortDir}`;
+        return await apiCall(url);
+    }
+
+    async function changeLicensePage(page) {
+        if (page < 1) return;
+        showTableLoading();
+        const licenses = await loadLicensePage(page, licenseState.search, licenseState.status);
+        if (page > licenses.totalPages) return;
+        hideTableLoading();
+        document.getElementById('license-tbody').innerHTML = renderLicenseRows(licenses.items);
+        document.getElementById('license-pagination').innerHTML = renderPagination(licenses);
+        document.getElementById('license-total-badge').textContent = licenses.totalCount + ' licenses';
+    }
+
+    let searchTimeout = null;
+    function handleLicenseSearch(event) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            const search = document.getElementById('license-search').value.trim();
+            showTableLoading();
+            const licenses = await loadLicensePage(1, search, licenseState.status);
+            hideTableLoading();
+            document.getElementById('license-tbody').innerHTML = renderLicenseRows(licenses.items);
+            document.getElementById('license-pagination').innerHTML = renderPagination(licenses);
+            document.getElementById('license-total-badge').textContent = licenses.totalCount + ' licenses';
+        }, 400);
+    }
+
+    async function handleStatusFilter() {
+        const status = document.getElementById('license-status-filter').value;
+        showTableLoading();
+        const licenses = await loadLicensePage(1, licenseState.search, status);
+        hideTableLoading();
+        document.getElementById('license-tbody').innerHTML = renderLicenseRows(licenses.items);
+        document.getElementById('license-pagination').innerHTML = renderPagination(licenses);
+        document.getElementById('license-total-badge').textContent = licenses.totalCount + ' licenses';
+    }
+
+    function sortLicenses(column) {
+        if (licenseState.sortBy === column) {
+            licenseState.sortDir = licenseState.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            licenseState.sortBy = column;
+            licenseState.sortDir = 'desc';
+        }
+        showTableLoading();
+        loadLicensePage(1, licenseState.search, licenseState.status).then(licenses => {
+            hideTableLoading();
+            document.getElementById('license-tbody').innerHTML = renderLicenseRows(licenses.items);
+            document.getElementById('license-pagination').innerHTML = renderPagination(licenses);
+            document.getElementById('license-total-badge').textContent = licenses.totalCount + ' licenses';
+        }).catch(() => {});
+    }
+
+    function setPeriod(period) {
+        // Placeholder for period filter
+    }
+
+    async function downloadReport(licenseKey) {
+        try {
+            const token = sessionStorage.getItem('authToken');
+            const res = await fetch(`${API_BASE}/license/${licenseKey}/export`, { headers: { 'Authorization': 'Bearer ' + token } });
+            if (!res.ok) throw new Error('Download failed');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `usage-report-${licenseKey}.csv`;
+            document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url);
+        } catch (err) { alert('Failed to download report.'); }
+    }
+
+    function renderLicenseRows(items) {
+        licenseState.currentItems = items || [];
+        if (!items || items.length === 0) return `<tr><td colspan="9" class="text-center px-4 py-6 text-textMuted text-xs">No licenses found</td></tr>`;
+        return items.map(l => {
+            let actionHtml = '';
+            let rowClass = 'table-row-hover';
+            if (!l.hasUsageData) {
+                actionHtml = `<span class="text-[10px] text-warning font-medium">No Data</span>`;
+                rowClass = 'bg-amber-50/30';
+            } else {
+                actionHtml = `<div class="flex items-center justify-center gap-1">
+                    <button onclick="loadGrades('${escapeHtml(l.licenseKey)}')" class="text-[11px] font-medium text-brand hover:text-indigo-800 bg-brandLight px-2 py-1 rounded-md transition">View →</button>
+                    <button onclick="downloadReport('${escapeHtml(l.licenseKey)}')" class="text-[10px] text-success hover:text-green-700 bg-green-50 p-1 rounded-md transition" title="Download">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </button>
+                </div>`;
+            }
+            return `<tr class="${rowClass}">
+                <td class="px-4 py-2.5 font-mono text-[11px] text-textPrimary font-medium">${platformIcon(l.platform)}${escapeHtml(l.licenseKey)}</td>
+                <td class="px-3 py-2.5 text-[11px] text-textSecondary">${escapeHtml(l.consumerName) || '<span class="text-textMuted">—</span>'}</td>
+                <td class="text-center px-3 py-2.5 text-textSecondary text-[11px]">${l.totalSessions}</td>
+                <td class="text-center px-3 py-2.5 font-medium text-textPrimary text-[11px]">${l.totalTime}</td>
+                <td class="text-center px-3 py-2.5"><span class="badge bg-purple-50 text-purple">${l.videoTime}</span></td>
+                <td class="text-center px-3 py-2.5"><span class="badge bg-orange-50 text-orange">${l.simulationTime}</span></td>
+                <td class="text-center px-3 py-2.5 text-textSecondary text-[11px]">${l.gradeCount}</td>
+                <td class="text-center px-3 py-2.5 text-textMuted text-[10px]">${formatDate(l.lastUsageDate)}</td>
+                <td class="text-center px-3 py-2.5">${actionHtml}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderPagination(data) {
+        if (data.totalPages <= 1) return `<p class="text-xs text-textMuted">Showing all ${data.totalCount} results</p><div></div>`;
+        const from = (data.page - 1) * data.pageSize + 1;
+        const to = Math.min(data.page * data.pageSize, data.totalCount);
+        const isFirst = data.page === 1;
+        const isLast = data.page === data.totalPages;
+        const btnActive = 'w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-sm text-textSecondary hover:bg-brand hover:text-white hover:border-brand transition cursor-pointer';
+        const btnDisabled = 'w-8 h-8 rounded-lg border border-gray-100 flex items-center justify-center text-sm text-gray-300 cursor-not-allowed';
+        return `
+            <p class="text-xs text-textMuted">${from}–${to} of ${data.totalCount}</p>
+            <div class="flex items-center gap-1">
+                <button onclick="changeLicensePage(1)" ${isFirst?'disabled':''} class="${isFirst?btnDisabled:btnActive}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg></button>
+                <button onclick="changeLicensePage(${data.page-1})" ${isFirst?'disabled':''} class="${isFirst?btnDisabled:btnActive}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                <span class="px-3 py-1 text-xs font-medium text-textPrimary">${data.page}/${data.totalPages}</span>
+                <button onclick="changeLicensePage(${data.page+1})" ${isLast?'disabled':''} class="${isLast?btnDisabled:btnActive}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+                <button onclick="changeLicensePage(${data.totalPages})" ${isLast?'disabled':''} class="${isLast?btnDisabled:btnActive}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg></button>
+            </div>
+        `;
+    }
+
+    // ===== DRILL-DOWN: GRADES =====
+    async function loadGrades(licenseKey) {
+        state.breadcrumb = [
+            { label: state.orgName, action: loadOrgSummary },
+            { label: `License: ${licenseKey}`, action: () => loadGrades(licenseKey) }
+        ];
+        renderBreadcrumb();
+        document.getElementById('page-title').textContent = 'License Details';
+        showLoading();
+
+        try {
+            const grades = await apiCall(`/license/${licenseKey}/grades`);
+            hideLoading();
+            const totalSessions = grades.reduce((s, g) => s + g.totalSessions, 0);
+            const totalVideo = grades.reduce((s, g) => s + g.videoUsageSeconds, 0);
+            const totalSim = grades.reduce((s, g) => s + g.simulationUsageSeconds, 0);
+            const totalUsage = totalVideo + totalSim;
+            const videoPct = totalUsage > 0 ? Math.round(totalVideo / totalUsage * 100) : 0;
+            const simPct = 100 - videoPct;
+
+            document.getElementById('content-area').innerHTML = `
+                <div class="fade-in">
+                    <!-- License Header Card -->
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden mb-4">
+                        <div class="px-4 py-3 border-b border-borderLight">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-[10px] text-textMuted uppercase tracking-wide">License Key</p>
+                                    <p class="text-xs font-mono font-semibold text-textPrimary mt-0.5">${escapeHtml(licenseKey)}</p>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <div class="text-center"><p class="text-lg font-bold text-textPrimary">${totalSessions}</p><p class="text-[10px] text-textMuted">Sessions</p></div>
+                                    <div class="text-center"><p class="text-lg font-bold text-purple">${formatTime(totalVideo)}</p><p class="text-[10px] text-textMuted">Video</p></div>
+                                    <div class="text-center"><p class="text-lg font-bold text-orange">${formatTime(totalSim)}</p><p class="text-[10px] text-textMuted">Simulation</p></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-4 py-2.5">
+                            <div class="flex items-center gap-3">
+                                <span class="text-[10px] text-textMuted flex-shrink-0">Content Split</span>
+                                <div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden flex">
+                                    <div class="h-full bg-purple rounded-l-full" style="width:${videoPct}%"></div>
+                                    <div class="h-full bg-orange rounded-r-full" style="width:${simPct}%"></div>
+                                </div>
+                                <div class="flex items-center gap-3 text-[10px] flex-shrink-0">
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-purple"></span>${videoPct}% Video</span>
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-orange"></span>${simPct}% Sim</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+                        <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                            <div class="px-4 py-2.5 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Usage Distribution</h3></div>
+                            <div class="p-5 flex items-center justify-center"><div style="width:150px;height:150px;"><canvas id="chart-grade-donut"></canvas></div></div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card overflow-hidden lg:col-span-2">
+                            <div class="px-4 py-2.5 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Video vs Simulation by Grade</h3></div>
+                            <div class="p-5"><div style="height:${Math.max(160, grades.length * 64)}px"><canvas id="chart-grade-stacked"></canvas></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Grade Table -->
+                    ${renderDrillTable('Grade', grades, ['gradeName:Grade', 'totalSessions:Sessions', 'totalTime:Total Time', 'videoTime:Video', 'simulationTime:Simulation', 'subjectCount:Subjects', 'lastUsageDate:Last Usage'], (g) => `loadSubjects('${licenseKey}', '${g.gradeId}', '${(g.gradeName||g.gradeId).replace(/'/g,"\\'")}')`, 'View →')}
+                </div>
+            `;
+            // Charts
+            const labels = grades.map(g => g.gradeName || g.gradeId);
+            const colors = ['#4F46E5','#10B981','#F59E0B','#EF4444','#7C3AED','#EC4899'];
+            new Chart(document.getElementById('chart-grade-donut'), { type: 'doughnut', data: { labels, datasets: [{ data: grades.map(g => Math.round(g.totalUsageSeconds/60)), backgroundColor: colors.slice(0, grades.length), borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 8, usePointStyle: true } } } } });
+            new Chart(document.getElementById('chart-grade-stacked'), { type: 'bar', data: { labels, datasets: [{ label: 'Video', data: grades.map(g => Math.round(g.videoUsageSeconds/60)), backgroundColor: '#7C3AED', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.7 }, { label: 'Simulation', data: grades.map(g => Math.round(g.simulationUsageSeconds/60)), backgroundColor: '#F97316', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.7 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { font: { size: 11 }, usePointStyle: true, padding: 16 } } }, scales: { x: { stacked: true, beginAtZero: true, title: { display: true, text: 'Minutes', font: { size: 10 } }, ticks: { font: { size: 10 } }, grid: { color: '#F3F4F6' } }, y: { stacked: true, grid: { display: false }, ticks: { font: { size: 12, weight: '500' }, padding: 8 } } } } });
+        } catch (err) { hideLoading(); document.getElementById('content-area').innerHTML = `<div class="text-center py-12 text-danger">Error: ${err.message}</div>`; }
+    }
+
+    // ===== DRILL-DOWN: SUBJECTS =====
+    async function loadSubjects(licenseKey, gradeId, gradeName) {
+        state.breadcrumb = [
+            { label: state.orgName, action: loadOrgSummary },
+            { label: `License: ${licenseKey}`, action: () => loadGrades(licenseKey) },
+            { label: gradeName, action: () => loadSubjects(licenseKey, gradeId, gradeName) }
+        ];
+        renderBreadcrumb();
+        document.getElementById('page-title').textContent = gradeName;
+        showLoading();
+
+        try {
+            const subjects = await apiCall(`/license/${licenseKey}/grades/${gradeId}/subjects`);
+            hideLoading();
+            document.getElementById('content-area').innerHTML = `
+                <div class="fade-in">
+                    ${renderSummaryHeader(gradeName, subjects)}
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+                        <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                            <div class="px-4 py-2.5 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Distribution</h3></div>
+                            <div class="p-5 flex items-center justify-center"><div style="width:150px;height:150px;"><canvas id="chart-subjects-donut"></canvas></div></div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card overflow-hidden lg:col-span-2">
+                            <div class="px-4 py-2.5 border-b border-borderLight"><h3 class="text-xs font-semibold text-textPrimary">Video vs Simulation</h3></div>
+                            <div class="p-5"><div style="height:${Math.max(160, subjects.length * 64)}px"><canvas id="chart-subjects-split"></canvas></div></div>
+                        </div>
+                    </div>
+                    ${renderDrillTable('Subject', subjects, ['subjectName:Subject', 'totalSessions:Sessions', 'totalTime:Total Time', 'videoTime:Video', 'simulationTime:Simulation', 'chapterCount:Chapters', 'lastUsageDate:Last Usage'], (s) => `loadChapters('${licenseKey}', '${gradeId}', '${s.subjectId}', '${(s.subjectName||s.subjectId).replace(/'/g,"\\'")}', '${gradeName.replace(/'/g,"\\'")}')`, 'View →')}
+                </div>
+            `;
+            if (subjects.length > 0) {
+                const labels = subjects.map(s => s.subjectName || s.subjectId);
+                const colors = ['#4F46E5','#10B981','#F59E0B','#EF4444','#7C3AED','#EC4899'];
+                new Chart(document.getElementById('chart-subjects-donut'), { type: 'doughnut', data: { labels, datasets: [{ data: subjects.map(s => Math.round(s.totalUsageSeconds/60)), backgroundColor: colors.slice(0, subjects.length), borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 8, usePointStyle: true } } } } });
+                new Chart(document.getElementById('chart-subjects-split'), { type: 'bar', data: { labels, datasets: [{ label: 'Video', data: subjects.map(s => Math.round(s.videoUsageSeconds/60)), backgroundColor: '#7C3AED', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.7 }, { label: 'Simulation', data: subjects.map(s => Math.round(s.simulationUsageSeconds/60)), backgroundColor: '#F97316', borderRadius: 6, barPercentage: 0.5, categoryPercentage: 0.7 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { font: { size: 11 }, usePointStyle: true, padding: 16 } } }, scales: { x: { stacked: true, beginAtZero: true, title: { display: true, text: 'Minutes', font: { size: 10 } }, ticks: { font: { size: 10 } }, grid: { color: '#F3F4F6' } }, y: { stacked: true, grid: { display: false }, ticks: { font: { size: 12, weight: '500' }, padding: 8 } } } } });
+            }
+        } catch (err) { hideLoading(); document.getElementById('content-area').innerHTML = `<div class="text-center py-12 text-danger">Error: ${err.message}</div>`; }
+    }
+
+    // ===== DRILL-DOWN: CHAPTERS =====
+    async function loadChapters(licenseKey, gradeId, subjectId, subjectName, gradeName) {
+        state.breadcrumb = [
+            { label: state.orgName, action: loadOrgSummary },
+            { label: `License: ${licenseKey}`, action: () => loadGrades(licenseKey) },
+            { label: gradeName, action: () => loadSubjects(licenseKey, gradeId, gradeName) },
+            { label: subjectName, action: () => loadChapters(licenseKey, gradeId, subjectId, subjectName, gradeName) }
+        ];
+        renderBreadcrumb();
+        document.getElementById('page-title').textContent = subjectName;
+        showLoading();
+
+        try {
+            const chapters = await apiCall(`/license/${licenseKey}/grades/${gradeId}/subjects/${subjectId}/chapters`);
+            hideLoading();
+            document.getElementById('content-area').innerHTML = `
+                <div class="fade-in">
+                    ${renderSummaryHeader(subjectName + ' — ' + gradeName, chapters)}
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
+                        <div class="bg-white rounded-xl p-4 shadow-card"><h3 class="text-xs font-semibold text-textPrimary mb-2">Usage by Chapter (Top 10)</h3><div style="height:${Math.max(160, Math.min(chapters.length, 10) * 34)}px"><canvas id="chart-chapters-bar"></canvas></div></div>
+                        <div class="bg-white rounded-xl p-4 shadow-card"><h3 class="text-xs font-semibold text-textPrimary mb-2">Video vs Simulation</h3><div style="height:${Math.max(160, Math.min(chapters.length, 10) * 34)}px"><canvas id="chart-chapters-split"></canvas></div></div>
+                    </div>
+                    ${renderDrillTable('Chapter', chapters, ['chapterName:Chapter', 'totalSessions:Sessions', 'totalTime:Total Time', 'videoTime:Video', 'simulationTime:Simulation', 'topicCount:Topics', 'lastUsageDate:Last Usage'], (c) => `loadTopics('${licenseKey}', '${c.chapterId}', '${(c.chapterName||c.chapterId).replace(/'/g,"\\'")}', '${subjectName.replace(/'/g,"\\'")}', '${gradeName.replace(/'/g,"\\'")}', '${gradeId}', '${subjectId}')`, 'View →')}
+                </div>
+            `;
+            if (chapters.length > 0) {
+                const top = chapters.slice(0, 10);
+                const fullChapterNames = top.map(c => c.chapterName || c.chapterId);
+                const labels = fullChapterNames.map(n => n.length > 28 ? n.substring(0,28)+'...' : n);
+                new Chart(document.getElementById('chart-chapters-bar'), { type: 'bar', data: { labels, datasets: [{ data: top.map(c => Math.round(c.totalUsageSeconds/60)), backgroundColor: ['#4F46E5','#10B981','#F59E0B','#EF4444','#7C3AED','#EC4899','#06B6D4','#84CC16','#F43F5E','#6366F1'], borderRadius: 6, barThickness: 18 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (ctx) => fullChapterNames[ctx[0].dataIndex], label: (ctx) => ` ${ctx.parsed.x} minutes` } } }, scales: { x: { beginAtZero: true, ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 10 }, autoSkip: false }, grid: { display: false } } } } });
+                new Chart(document.getElementById('chart-chapters-split'), { type: 'bar', data: { labels, datasets: [{ label: 'Video', data: top.map(c => Math.round(c.videoUsageSeconds/60)), backgroundColor: '#7C3AED', borderRadius: 4, barThickness: 18 }, { label: 'Simulation', data: top.map(c => Math.round(c.simulationUsageSeconds/60)), backgroundColor: '#F97316', borderRadius: 4, barThickness: 18 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { font: { size: 10 }, usePointStyle: true } }, tooltip: { callbacks: { title: (ctx) => fullChapterNames[ctx[0].dataIndex] } } }, scales: { x: { stacked: true, beginAtZero: true, ticks: { font: { size: 9 } } }, y: { stacked: true, ticks: { font: { size: 10 }, autoSkip: false }, grid: { display: false } } } } });
+            }
+        } catch (err) { hideLoading(); document.getElementById('content-area').innerHTML = `<div class="text-center py-12 text-danger">Error: ${err.message}</div>`; }
+    }
+
+    // ===== DRILL-DOWN: TOPICS =====
+    async function loadTopics(licenseKey, chapterId, chapterName, subjectName, gradeName, gradeId, subjectId) {
+        state.breadcrumb = [
+            { label: state.orgName, action: loadOrgSummary },
+            { label: `License: ${licenseKey}`, action: () => loadGrades(licenseKey) },
+            { label: gradeName, action: () => loadSubjects(licenseKey, gradeId, gradeName) },
+            { label: subjectName, action: () => loadChapters(licenseKey, gradeId, subjectId, subjectName, gradeName) },
+            { label: chapterName, action: () => loadTopics(licenseKey, chapterId, chapterName, subjectName, gradeName, gradeId, subjectId) }
+        ];
+        renderBreadcrumb();
+        document.getElementById('page-title').textContent = chapterName;
+        showLoading();
+
+        try {
+            const topics = await apiCall(`/license/${licenseKey}/chapters/${chapterId}/topics`);
+            hideLoading();
+
+            const yesIcon = `<span class="text-success text-xs font-medium">✓ Yes</span>`;
+            const noIcon = `<span class="text-danger text-xs font-medium">✗ No</span>`;
+            const both = topics.filter(t => t.videoWatched && t.simulationUsed).length;
+            const videoOnly = topics.filter(t => t.videoWatched && !t.simulationUsed).length;
+            const simOnly = topics.filter(t => !t.videoWatched && t.simulationUsed).length;
+
+            document.getElementById('content-area').innerHTML = `
+                <div class="fade-in">
+                    ${renderSummaryHeader(chapterName + ' — ' + subjectName, topics)}
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden mb-4">
+                        <div class="px-4 py-3 border-b border-borderLight flex items-center justify-between">
+                            <h3 class="text-xs font-semibold text-textPrimary">Topics</h3>
+                            <span class="text-[10px] font-semibold text-brand bg-brandLight px-2 py-0.5 rounded-md">${topics.length} Topics</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead><tr class="border-b border-borderLight">
+                                    <th class="text-left px-4 py-2 text-[10px] font-medium text-textMuted">Topic</th>
+                                    <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Video</th>
+                                    <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Video Time</th>
+                                    <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Sim</th>
+                                    <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Sim Time</th>
+                                    <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Total</th>
+                                    <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Last Usage</th>
+                                </tr></thead>
+                                <tbody class="divide-y divide-borderLight">
+                                    ${topics.map(t => `<tr class="table-row-hover">
+                                        <td class="px-4 py-2"><span class="font-medium text-textPrimary text-xs">${escapeHtml(t.topicName) || 'Topic ' + t.topicId}</span></td>
+                                        <td class="text-center px-3 py-2">${t.videoWatched ? yesIcon : noIcon}</td>
+                                        <td class="text-center px-3 py-2">${t.videoWatched ? `<span class="badge bg-purple-50 text-purple">${t.videoTime}</span>` : '<span class="text-textMuted">—</span>'}</td>
+                                        <td class="text-center px-3 py-2">${t.simulationUsed ? yesIcon : noIcon}</td>
+                                        <td class="text-center px-3 py-2">${t.simulationUsed ? `<span class="badge bg-orange-50 text-orange">${t.simulationTime}</span>` : '<span class="text-textMuted">—</span>'}</td>
+                                        <td class="text-center px-3 py-2 font-medium text-textPrimary">${t.totalTime}</td>
+                                        <td class="text-center px-3 py-2 text-[10px] text-textMuted">${formatDate(t.lastUsageDate)}</td>
+                                    </tr>`).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Coverage Charts -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                        <div class="bg-white rounded-xl p-4 shadow-card">
+                            <h3 class="text-xs font-semibold text-textPrimary mb-2">Coverage</h3>
+                            <div style="height:120px"><canvas id="chart-topics-coverage"></canvas></div>
+                        </div>
+                        <div class="bg-white rounded-xl p-4 shadow-card lg:col-span-2">
+                            <h3 class="text-xs font-semibold text-textPrimary mb-2">Time per Topic (Top 10)</h3>
+                            <div style="height:${Math.max(200, Math.min(topics.length, 10) * 36)}px"><canvas id="chart-topics-bar"></canvas></div>
+                        </div>
+                    </div>
+                    <!-- Coverage Summary -->
+                    <div class="bg-white rounded-xl p-4 shadow-card mt-3">
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="flex items-center gap-3"><div class="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-success" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></div><div><p class="text-[10px] text-textMuted">Both</p><p class="text-sm font-bold text-textPrimary">${both}/${topics.length}</p></div></div>
+                            <div class="flex items-center gap-3"><div class="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg></div><div><p class="text-[10px] text-textMuted">Video Only</p><p class="text-sm font-bold text-textPrimary">${videoOnly}/${topics.length}</p></div></div>
+                            <div class="flex items-center gap-3"><div class="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div><div><p class="text-[10px] text-textMuted">Sim Only</p><p class="text-sm font-bold text-textPrimary">${simOnly}/${topics.length}</p></div></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            if (topics.length > 0) {
+                new Chart(document.getElementById('chart-topics-coverage'), { type: 'doughnut', data: { labels: ['Both', 'Video Only', 'Sim Only'], datasets: [{ data: [both, videoOnly, simOnly], backgroundColor: ['#10B981', '#7C3AED', '#F97316'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true } } } } });
+                const topN = topics.slice(0, 10);
+                const fullTopicNames = topN.map(t => t.topicName || 'Topic '+t.topicId);
+                const topicLabels = fullTopicNames.map(n => n.length > 30 ? n.substring(0,30)+'...' : n);
+                new Chart(document.getElementById('chart-topics-bar'), { type: 'bar', data: { labels: topicLabels, datasets: [{ label: 'Video', data: topN.map(t => Math.round(t.videoUsageSeconds/60)), backgroundColor: '#7C3AED', borderRadius: 4, barThickness: 18 }, { label: 'Simulation', data: topN.map(t => Math.round(t.simulationUsageSeconds/60)), backgroundColor: '#F97316', borderRadius: 4, barThickness: 18 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { font: { size: 10 }, usePointStyle: true } }, tooltip: { callbacks: { title: (ctx) => fullTopicNames[ctx[0].dataIndex] } } }, scales: { x: { stacked: true, beginAtZero: true, ticks: { font: { size: 9 } } }, y: { stacked: true, ticks: { font: { size: 9 }, autoSkip: false }, grid: { display: false } } } } });
+            }
+        } catch (err) { hideLoading(); document.getElementById('content-area').innerHTML = `<div class="text-center py-12 text-danger">Error: ${err.message}</div>`; }
+    }
+
+    // ===== SHARED COMPONENTS =====
+    function statCard(title, value, subtitle, color, state) {
+        const colorMap = { indigo: 'text-brand', green: 'text-success', blue: 'text-blue-600', purple: 'text-purple', orange: 'text-orange' };
+        return `<div class="bg-white rounded-xl p-3 shadow-card stat-card">
+            <p class="text-[10px] font-medium ${colorMap[color] || 'text-textMuted'} uppercase tracking-wide">${title}</p>
+            <p class="text-lg font-bold text-textPrimary mt-0.5">${value}</p>
+            ${subtitle ? `<p class="text-[10px] text-textMuted mt-0.5">${subtitle}</p>` : ''}
+        </div>`;
+    }
+
+    function renderSummaryHeader(title, items) {
+        const totalSessions = items.reduce((s, i) => s + (i.totalSessions || 0), 0);
+        const totalVideo = items.reduce((s, i) => s + (i.videoUsageSeconds || 0), 0);
+        const totalSim = items.reduce((s, i) => s + (i.simulationUsageSeconds || 0), 0);
+        return `<div class="bg-white rounded-xl p-4 shadow-card mb-4">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+                <h2 class="text-sm font-bold text-textPrimary">${title}</h2>
+                <div class="flex gap-5 text-center">
+                    <div><p class="text-sm font-bold text-textPrimary">${totalSessions}</p><p class="text-[10px] text-textMuted">Sessions</p></div>
+                    <div><p class="text-sm font-bold text-purple">${formatTime(totalVideo)}</p><p class="text-[10px] text-textMuted">Video</p></div>
+                    <div><p class="text-sm font-bold text-orange">${formatTime(totalSim)}</p><p class="text-[10px] text-textMuted">Simulation</p></div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function renderDrillTable(type, items, columns, actionFn, actionLabel) {
+        return `<div class="bg-white rounded-xl shadow-card overflow-hidden">
+            <div class="px-4 py-3 border-b border-borderLight flex items-center justify-between">
+                <h3 class="text-xs font-semibold text-textPrimary">${type}-wise Breakdown</h3>
+                <span class="text-[10px] font-semibold text-brand bg-brandLight px-2 py-0.5 rounded-md">${items.length} ${type}s</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead><tr class="border-b border-borderLight">
+                        ${columns.map(c => `<th class="${c.split(':')[0].includes('Name') ? 'text-left px-4' : 'text-center px-3'} py-2 text-[10px] font-medium text-textMuted">${c.split(':')[1]}</th>`).join('')}
+                        <th class="text-center px-3 py-2 text-[10px] font-medium text-textMuted">Action</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-borderLight">
+                        ${items.map(item => `<tr class="table-row-hover">
+                            ${columns.map(c => {
+                                const key = c.split(':')[0];
+                                let val = item[key];
+                                if (key.includes('Name')) return `<td class="px-4 py-2.5 font-medium text-textPrimary text-xs">${escapeHtml(val) || escapeHtml(item[key.replace('Name','Id')])}</td>`;
+                                if (key === 'lastUsageDate') return `<td class="text-center px-3 py-2.5 text-[10px] text-textMuted">${formatDate(val)}</td>`;
+                                if (key.includes('video') && key.includes('Time')) return `<td class="text-center px-3 py-2.5"><span class="badge bg-purple-50 text-purple">${val}</span></td>`;
+                                if ((key.includes('simulation') || key.includes('Simulation')) && key.includes('Time')) return `<td class="text-center px-3 py-2.5"><span class="badge bg-orange-50 text-orange">${val}</span></td>`;
+                                return `<td class="text-center px-3 py-2.5 text-textSecondary">${val}</td>`;
+                            }).join('')}
+                            <td class="text-center px-3 py-2.5"><button onclick="${actionFn(item)}" class="text-[11px] font-medium text-brand hover:text-indigo-800 bg-brandLight px-2 py-1 rounded-md transition">${actionLabel}</button></td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    // ===== CHARTS =====
+    function renderDonutChart(video, sim, videoPct, simPct) {
+        const el = document.getElementById('chart-donut');
+        if (!el) return;
+        document.getElementById('donut-percentage').textContent = videoPct + '%';
+        document.getElementById('donut-video-label').textContent = `Video · ${videoPct}%`;
+        document.getElementById('donut-sim-label').textContent = `Simulation · ${simPct}%`;
+        new Chart(el, {
+            type: 'doughnut',
+            data: { labels: ['Video', 'Simulation'], datasets: [{ data: [video, sim], backgroundColor: ['#7C3AED', '#F97316'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
+        });
+    }
+
+    function renderTrendChart(trend) {
+        const el = document.getElementById('chart-trend');
+        if (!el || !trend || trend.length === 0) return;
+        new Chart(el, {
+            type: 'line',
+            data: {
+                labels: trend.map(t => new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+                datasets: [
+                    { label: 'Video', data: trend.map(t => Math.round(t.videoSeconds/60)), borderColor: '#7C3AED', backgroundColor: 'rgba(124,58,237,0.05)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4 },
+                    { label: 'Simulation', data: trend.map(t => Math.round(t.simulationSeconds/60)), borderColor: '#F97316', backgroundColor: 'rgba(249,115,22,0.05)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4 }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' }, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#F3F4F6' }, ticks: { font: { size: 11 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 8 } } } }
+        });
+    }
+
+    function renderSessionsBarChart(trend) {
+        const el = document.getElementById('chart-sessions-bar');
+        if (!el || !trend || trend.length === 0) return;
+        const last7 = trend.slice(-7);
+        const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        new Chart(el, {
+            type: 'bar',
+            data: {
+                labels: last7.map(t => { const d = new Date(t.date); return dayNames[d.getDay()] + ' ' + d.getDate(); }),
+                datasets: [{ data: last7.map(t => Math.round((t.videoSeconds + t.simulationSeconds) / 60)), backgroundColor: '#C7D2FE', hoverBackgroundColor: '#4F46E5', borderRadius: 6 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false, beginAtZero: true }, x: { grid: { display: false }, ticks: { font: { size: 9 } } } } }
+        });
+    }
+    </script>
+</body>
+</html>

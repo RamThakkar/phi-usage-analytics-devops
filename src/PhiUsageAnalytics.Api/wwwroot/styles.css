@@ -1,0 +1,19 @@
+/* ============================================
+   Phibonacci Analytics — Sidebar Dashboard
+   Reference: Dribbble UI Templates (Light Mode)
+   ============================================ */
+
+/* This file is intentionally minimal.
+   All styling is handled inline via Tailwind CSS
+   and the <style> block in index.html.
+   
+   This file exists for any additional overrides
+   or print styles needed. */
+
+/* === PRINT === */
+@media print {
+    .sidebar-desktop, header, footer, button, select, input, #license-pagination { display: none !important; }
+    .main-content { margin-left: 0 !important; }
+    body { background: white !important; }
+    .bg-white { border: 1px solid #eee !important; }
+}
